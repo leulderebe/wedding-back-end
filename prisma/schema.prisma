@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  EVENT_PLANNER
+  VENDOR
+  CLIENT
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum VendorStatus {
+  PENDING_APPROVAL
+  APPROVED
+  SUSPENDED
+}
+
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  password      String
+  firstName     String
+  lastName      String
+  phone         String?
+  avatar        String?
+  role          UserRole
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  isBlocked     Boolean     @default(false)
+  isReported    Boolean     @default(false)
+  isOnline      Boolean     @default(false) // Add for online status
+
+  conversations Conversation[] @relation("UserConversations") // Add relation to conversations
+
+  // Existing relationships
+  clientProfile     Client?     @relation
+  vendorProfile     Vendor?     @relation
+  eventPlannerProfile EventPlanner? @relation
+
+  feedbackGiven     Feedback[]  @relation("FeedbackFromUser")
+  feedbackReceived  Feedback[]  @relation("FeedbackToUser")
+
+  messagesSent      Message[]   @relation("MessageFromUser")
+  messagesReceived  Message[]   @relation("MessageToUser")
+
+  paymentsMade      Payment[]   @relation("PaymentsMade")
+  paymentsReceived  Payment[]   @relation("PaymentsReceived")
+}
+
+// Add Conversation model
+model Conversation {
+  id          String     @id @default(uuid())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  participants User[]     @relation("UserConversations") // Users in the conversation (vendor and client)
+  messages    Message[]  @relation("ConversationMessages") // Messages in this conversation
+}
+
+model Client {
+  id          String     @id @default(uuid())
+  userId      String     @unique
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+  feedbacks   Feedback[] @relation("ClientFeedbacks")
+  payments    Payment[]  @relation("ClientPayments")
+}
+
+model EventPlanner {
+  id          String     @id @default(uuid())
+  userId      String     @unique
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio         String?
+  messages    Message[]  @relation("EventPlannerMessages")
+}
+
+model Vendor {
+  id               String     @id @default(uuid())
+  userId           String     @unique
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName     String
+  description      String?
+  serviceType      String
+  accountNumber    String?
+  tinNumber        String?
+  categoryId       String?
+  category         ServiceCategory? @relation(fields: [categoryId], references: [id])
+
+  status           VendorStatus @default(PENDING_APPROVAL)
+  rating           Float?     @default(0)
+  services         Service[]
+  payments         Payment[]  @relation("VendorPayments")
+  feedbacks        Feedback[] @relation("VendorFeedbacks")
+  chapaSubaccountId String?
+}
+
+// Add this new model for admin subaccount
+model ChapaSubaccount {
+  id          String   @id @default(uuid())
+  accountId   String   @unique
+  type        String   // 'ADMIN' or 'VENDOR'
+  vendorId    String?
+  createdAt   DateTime @default(now())
+}
+
+model ServiceCategory {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  image       String?    // Path to the category image
+  services    Service[]
+  vendors     Vendor[]   // Vendors in this category
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Service {
+  id          String          @id @default(uuid())
+  name        String
+  description String
+  price       Float
+  image       String?         // Path to the service image
+  features    String?         // JSON string array of features
+  packageType String?         // Package tier (Bronze, Silver, Gold, Platinum)
+  categoryId  String?
+  category    ServiceCategory? @relation(fields: [categoryId], references: [id])
+  vendorId    String
+  vendor      Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  bookings    Booking[]      @relation("ServiceBookings")
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Payment {
+  id          String       @id @default(uuid())
+  amount      Float
+  status      PaymentStatus @default(PENDING)
+  method      String
+  transactionId String?
+  bookingId   String?
+  booking     Booking?     @relation(fields: [bookingId], references: [id], name: "BookingPayments", onDelete: Cascade)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], name: "PaymentsMade", onDelete: Cascade)
+  recipientId String
+  recipient   User         @relation(fields: [recipientId], references: [id], name: "PaymentsReceived", onDelete: Cascade)
+  clientId    String?
+  client      Client?      @relation(fields: [clientId], references: [id], name: "ClientPayments", onDelete: Cascade)
+  vendorId    String?
+  vendor      Vendor?      @relation(fields: [vendorId], references: [id], name: "VendorPayments", onDelete: Cascade)
+  adminSplit  Float?
+  vendorSplit Float?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Booking {
+  id           String       @id @default(uuid())
+  clientId     String
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  serviceId    String
+  service      Service      @relation(fields: [serviceId], references: [id], name: "ServiceBookings")
+  eventDate    DateTime
+  location     String
+  attendees    Int?
+  specialRequests String?
+  status       BookingStatus @default(PENDING)
+  payments     Payment[]     @relation("BookingPayments")
+  feedback     Feedback[]    @relation("BookingFeedback")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Feedback {
+  id          String     @id @default(uuid())
+  rating      Int
+  comment     String?
+  bookingId   String
+  booking     Booking    @relation(fields: [bookingId], references: [id], name: "BookingFeedback", onDelete: Cascade)
+  fromUserId  String
+  fromUser    User       @relation(fields: [fromUserId], references: [id], name: "FeedbackFromUser", onDelete: Cascade)
+  toUserId    String
+  toUser      User       @relation(fields: [toUserId], references: [id], name: "FeedbackToUser", onDelete: Cascade)
+  vendorId    String?
+  vendor      Vendor?    @relation(fields: [vendorId], references: [id], name: "VendorFeedbacks", onDelete: Cascade)
+  clientId    String?
+  client      Client?    @relation(fields: [clientId], references: [id], name: "ClientFeedbacks", onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+// Update Message model
+model Message {
+  id            String        @id @default(uuid())
+  content       String
+  fromUserId    String
+  fromUser      User          @relation(fields: [fromUserId], references: [id], name: "MessageFromUser", onDelete: Cascade)
+  toUserId      String
+  toUser        User          @relation(fields: [toUserId], references: [id], name: "MessageToUser", onDelete: Cascade)
+  conversationId String?
+  conversation  Conversation? @relation(fields: [conversationId], references: [id], name: "ConversationMessages", onDelete: Cascade)
+  eventPlannerId String?
+  eventPlanner  EventPlanner? @relation(fields: [eventPlannerId], references: [id], name: "EventPlannerMessages", onDelete: Cascade)
+  read          Boolean       @default(false)
+  lastSeen      DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
