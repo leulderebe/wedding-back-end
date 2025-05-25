@@ -71,7 +71,7 @@ const checkRole = (allowedRoles) => {
         try {
           // Find the vendor in the database
           const vendor = await prisma.vendor.findFirst({
-            where: { userId: decoded.userId },
+            where: { userId: decoded.id },
           });
 
           if (!vendor) {

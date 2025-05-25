@@ -39,6 +39,7 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",
     "https://weddingplanning-1-joi4.onrender.com",
+    "https://wedding-front-end-x3cf.onrender.com", // Added new frontend URL
     "http://localhost:8000",
   ], // Ensure this matches your frontend URL
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
@@ -55,6 +56,7 @@ const io = new Server(httpServer, {
     origin: [
       "http://localhost:5173",
       "https://weddingplanning-1-joi4.onrender.com",
+      "https://wedding-front-end-x3cf.onrender.com", // Added new frontend URL
       "http://localhost:8000",
     ],
     methods: ["GET", "POST"],

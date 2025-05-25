@@ -72,6 +72,13 @@ const removeEventPlanner = asyncHandler(async (req, res) => {
 // Get all event planners
 const getEventPlanners = asyncHandler(async (req, res) => {
   const eventPlanners = await prisma.eventPlanner.findMany({
+    where: {
+      user: {
+        id: {
+          not: undefined, // Only get event planners that have a valid user relationship
+        },
+      },
+    },
     include: {
       user: {
         select: {
