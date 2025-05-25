@@ -80,8 +80,7 @@ const initiatePayment = asyncHandler(async (req, res) => {
     const tx_ref = `payment-${payment.id}-${uuid()}`;
 
     // Get URLs from environment variables with fallbacks
-    const frontendBaseUrl =
-      process.env.FRONTEND_URL || "https://weddingplanning-1-joi4.onrender.com";
+   const frontendBaseUrl =  "https://wedding-front-end-x3cf.onrender.com";
     const backendBaseUrl = process.env.BACKEND_URL || "http://localhost:5000";
 
     // Properly encode URL parameters to avoid HTML entity issues
