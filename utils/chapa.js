@@ -25,7 +25,7 @@ const createAdminSubaccount = async () => {
         business_name: "Wedding Planning Platform",
         account_name: "Wedding Planning Admin",
         bank_code: "946", // Zemen Bank
-        account_number: "1000307184475", // Test account for Zemen Bank
+        account_number: "1000307184478", // Test account for Zemen Bank
         split_type: "percentage",
         split_value: "0.1", // 10% as decimal string (fixed)
       });
