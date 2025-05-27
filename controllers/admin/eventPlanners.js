@@ -72,13 +72,6 @@ const removeEventPlanner = asyncHandler(async (req, res) => {
 // Get all event planners
 const getEventPlanners = asyncHandler(async (req, res) => {
   const eventPlanners = await prisma.eventPlanner.findMany({
-    where: {
-      user: {
-        id: {
-          not: undefined, // Only get event planners that have a valid user relationship
-        },
-      },
-    },
     include: {
       user: {
         select: {
@@ -100,19 +93,21 @@ const getEventPlanners = asyncHandler(async (req, res) => {
     },
   });
 
-  // Format the response
-  const formattedEventPlanners = eventPlanners.map((planner) => ({
-    id: planner.id,
-    userId: planner.userId,
-    companyName: planner.companyName,
-    bio: planner.bio,
-    email: planner.user.email,
-    name: `${planner.user.firstName} ${planner.user.lastName}`,
-    phone: planner.user.phone,
-    avatar: planner.user.avatar,
-    isBlocked: planner.user.isBlocked,
-    createdAt: planner.user.createdAt,
-  }));
+  // Format the response, filtering out any planners without valid user data
+  const formattedEventPlanners = eventPlanners
+    .filter((planner) => planner.user) // Only include planners with valid user data
+    .map((planner) => ({
+      id: planner.id,
+      userId: planner.userId,
+      companyName: planner.companyName,
+      bio: planner.bio,
+      email: planner.user.email,
+      name: `${planner.user.firstName} ${planner.user.lastName}`,
+      phone: planner.user.phone,
+      avatar: planner.user.avatar,
+      isBlocked: planner.user.isBlocked,
+      createdAt: planner.user.createdAt,
+    }));
 
   res.status(200).json(formattedEventPlanners);
 });
