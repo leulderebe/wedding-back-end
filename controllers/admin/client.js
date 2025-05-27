@@ -19,7 +19,7 @@ const getClients = asyncHandler(async (req, res) => {
     },
   });
 
-  const formattedClients = clients.map(client => ({
+  const formattedClients = clients.map((client) => ({
     id: client.id,
     name: `${client.user.firstName} ${client.user.lastName}`,
     email: client.user.email,
@@ -53,7 +53,7 @@ const getClientById = asyncHandler(async (req, res) => {
 
   if (!client) {
     res.status(404);
-    throw new Error('Client not found');
+    throw new Error("Client not found");
   }
 
   const formattedClient = {
@@ -79,7 +79,7 @@ const createClient = asyncHandler(async (req, res) => {
 
   if (userExists) {
     res.status(400);
-    throw new Error('User already exists');
+    throw new Error("User already exists");
   }
 
   // Hash password
@@ -93,7 +93,7 @@ const createClient = asyncHandler(async (req, res) => {
       firstName,
       lastName,
       phone,
-      role: 'CLIENT',
+      role: "CLIENT",
     },
   });
 
@@ -129,7 +129,19 @@ const createClient = asyncHandler(async (req, res) => {
 // Update client
 const updateClient = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { firstName, lastName, phone, isActive } = req.body;
+  const { firstName, lastName, phone, isActive, password } = req.body;
+
+  // Validate input
+  if (!firstName || !lastName) {
+    res.status(400);
+    throw new Error("First name and last name are required");
+  }
+
+  // Validate password if provided
+  if (password && (password.length < 1 || password.length > 128)) {
+    res.status(400);
+    throw new Error("Password must be between 1 and 128 characters");
+  }
 
   const client = await prisma.client.findUnique({
     where: { id },
@@ -140,18 +152,27 @@ const updateClient = asyncHandler(async (req, res) => {
 
   if (!client) {
     res.status(404);
-    throw new Error('Client not found');
+    throw new Error("Client not found");
+  }
+
+  // Prepare user update data
+  const updateData = {
+    firstName,
+    lastName,
+    phone,
+    isBlocked: !isActive,
+  };
+
+  // If password is provided, hash it and add to update data
+  if (password) {
+    const salt = await bcrypt.genSalt(10);
+    updateData.password = await bcrypt.hash(password, salt);
   }
 
   // Update user
   const updatedUser = await prisma.user.update({
     where: { id: client.userId },
-    data: {
-      firstName,
-      lastName,
-      phone,
-      isBlocked: !isActive,
-    },
+    data: updateData,
   });
 
   const formattedClient = {
@@ -165,7 +186,6 @@ const updateClient = asyncHandler(async (req, res) => {
 
   res.status(200).json(formattedClient);
 });
-
 // Delete client
 const deleteClient = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -179,7 +199,7 @@ const deleteClient = asyncHandler(async (req, res) => {
 
   if (!client) {
     res.status(404);
-    throw new Error('Client not found');
+    throw new Error("Client not found");
   }
 
   // Delete client and user (cascade)
@@ -187,7 +207,7 @@ const deleteClient = asyncHandler(async (req, res) => {
     where: { id: client.userId },
   });
 
-  res.status(200).json({ message: 'Client deleted successfully' });
+  res.status(200).json({ message: "Client deleted successfully" });
 });
 
 // Update client password
@@ -204,7 +224,7 @@ const updateClientPassword = asyncHandler(async (req, res) => {
 
   if (!client) {
     res.status(404);
-    throw new Error('Client not found');
+    throw new Error("Client not found");
   }
 
   // Hash new password
@@ -216,7 +236,7 @@ const updateClientPassword = asyncHandler(async (req, res) => {
     data: { password: hashedPassword },
   });
 
-  res.status(200).json({ message: 'Password updated successfully' });
+  res.status(200).json({ message: "Password updated successfully" });
 });
 
 module.exports = {
